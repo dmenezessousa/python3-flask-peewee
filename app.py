@@ -1,6 +1,6 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from peewee import *
-# from playhouse import model_to_dict , dict_to_model
+from playhouse.shortcuts import model_to_dict , dict_to_model
 
 db = PostgresqlDatabase('flask_lab', user='peewee', password='',host='localhost',port=5432)
 
@@ -29,15 +29,62 @@ Person(name='Diego',age=30).save()
 Person(name='Thaciana',age=31).save()
 
 #Creating new Pet
-Pet(name='Luna',animal_type='dog',owner_id=1)
-Pet(name='Thor',animal_type='dog',owner_id=2)
+Pet(name='Luna',animal_type='dog',owner_id=1).save()
+Pet(name='Thor',animal_type='dog',owner_id=2).save()
 
 app = Flask(__name__)
 
 #Person endpoint
-@app.route('/person', method=['GET','POST'])
-@app.route('/person/<id>', method=['GET','PUT','DELETE'])
-#Pet endpoint
-@app.route('/pet',method=['GET','POST'])
-@app.route('/pet/<id>', method=['GET','PUT','DELETE'])
+@app.route('/person', methods=['GET','POST'])
+@app.route('/person/<id>', methods=['GET','PUT','DELETE'])
+def person_endpoint(id=None):
+  if request.method == 'GET':    
+    if id:
+      return jsonify(model_to_dict(Person.get(Person.id == id)))
+    else:
+      people_list = []
+      for person in Person.select():
+        people_list.append(model_to_dict(person))
+      return jsonify(people_list)
 
+  if request.method == 'PUT':
+    body = request.get_json()
+    Person.update(body).where(Person.id == id).execute()
+    return 'Person ' + str(id) + ' has been updated.'
+
+  if request.method == 'POST':
+    new_person = dict_to_model(Person, request.get_json())
+    new_person.save()
+    return jsonify({"success": True})
+  
+  if request.method == 'DELETE':
+    Person.delete().where(Person.id == id).execute()
+    return "Person " + str(id) + " deleted."
+#Pet endpoint
+@app.route('/pet',methods=['GET','POST'])
+@app.route('/pet/<id>', methods=['GET','PUT','DELETE'])
+def pet_endpoint(id=None):
+  if request.method == 'GET':
+    if id:
+      return jsonify(model_to_dict(Pet.get(Pet.id == id)))
+    else:
+      pet_list = []
+      for pet in Pet.select():
+        pet_list.append(model_to_dict(pet))
+      return jsonify(pet_list)
+
+  if request.method == 'PUT':
+    body = request.get_json()
+    Pet.update(body).where(Pet.id == id).execute()
+    return 'Pet ' + str(id) + ' has been updated.'
+
+  if request.method == 'POST':
+    new_pet = dict_to_model(Pet, request.get_json())
+    new_pet.save()
+    return jsonify({"success": True})
+
+  if request.method == 'DELETE':
+    Pet.delete().where(Pet.id == id).execute()
+    return "Pet " + str(id) + " deleted."
+
+app.run(debug = True, port = 3000)
